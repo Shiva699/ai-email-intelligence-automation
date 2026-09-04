@@ -1,0 +1,744 @@
+{
+  "name": "Task 7",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "filters": {}
+      },
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        0,
+        112
+      ],
+      "id": "508d0447-b51d-4ad9-aa41-8a40ecf42d1d",
+      "name": "Gmail Trigger",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "BysOPUCLL6iUwNhf",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "3c9bb190-20ad-4b4f-a0cf-df0ae759fca3",
+              "name": "email_id",
+              "value": "={{$json.id}}",
+              "type": "string"
+            },
+            {
+              "id": "f9018597-e4ea-4d18-b8f8-1e28dc8cfd01",
+              "name": "sender",
+              "value": "={{$json.From}}",
+              "type": "string"
+            },
+            {
+              "id": "33ae5580-4e95-4553-90c7-2b8e3e8b102f",
+              "name": "subject",
+              "value": "={{$json.Subject}}",
+              "type": "string"
+            },
+            {
+              "id": "c65e04b1-c60a-426a-a064-2d20ac9b4a5f",
+              "name": "body",
+              "value": "={{ $json.snippet }}",
+              "type": "string"
+            },
+            {
+              "id": "a9571707-ba18-4f57-bda0-229031fe05fd",
+              "name": "date_time",
+              "value": "={{$json.internalDate}}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        224,
+        112
+      ],
+      "id": "1bcaeea5-315c-413d-b329-66e4a13aca10",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Analyze this incoming email.\n\nSender:\n{{$json.sender}}\n\nSubject:\n{{$json.subject}}\n\nEmail Body:\n{{$json.body}}\n\nClassify this email into EXACTLY ONE category:\nspamm, Personal, Work, or draft.\n\nReturn ONLY valid JSON in this exact format:\n\n{\n  \"email_type\": \"spamm\",\n  \"reason\": \"short reason\",\n  \"draft_required\": false,\n  \"draft_response\": \"\"\n}\n\nRules:\n- spamm: suspicious, phishing, unsolicited marketing, or unwanted email\n- Personal: normal personal communication\n- Work: professional/work-related communication\n- draft: email that requires a reply\n- draft_required must be true ONLY when email_type is draft\n- If draft_required is false, draft_response must be an empty string\n- Always use \"spamm\" for the spam category. Never return \"spam\".\n- Do not add any extra fields.",
+        "hasOutputParser": true,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        448,
+        112
+      ],
+      "id": "058da273-b81c-40bc-8d5a-3ccb73d2df35",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"email_type\": \"draft\",\n  \"reason\": \"Professional email requiring a response.\",\n  \"draft_required\": true,\n  \"draft_response\": \"Hi, thanks for reaching out. I’ll get back to you shortly.\"\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        592,
+        336
+      ],
+      "id": "6b973c0c-5417-46eb-99be-3e6eebf927e8",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-20b",
+        "options": {
+          "temperature": 0
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        464,
+        336
+      ],
+      "id": "9b6250e1-0b65-410b-9449-b0719c9eb3b0",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "5NumfgeY23dLiJkZ",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{$json.output.email_type}}",
+                    "rightValue": "spamm",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "87352e45-494e-46f5-80cf-811b3acb0643"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "56550189-173d-4b11-8dfd-b0fc228fccc3",
+                    "leftValue": "={{$json.output.email_type}}",
+                    "rightValue": "Personal",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "883e9e68-9a70-4870-9509-985c3689694c",
+                    "leftValue": "={{$json.output.email_type}}",
+                    "rightValue": "Work",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "ea8a205a-322a-4285-817c-62cd767a626e",
+                    "leftValue": "={{$json.output.email_type}}",
+                    "rightValue": "draft",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        800,
+        80
+      ],
+      "id": "edd3e3e9-57b4-4aa4-87a7-267c20ee69f0",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "operation": "addLabels",
+        "messageId": "={{ $('Gmail Trigger').item.json.id }}",
+        "labelIds": [
+          "Label_2137611260696845596"
+        ]
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1024,
+        400
+      ],
+      "id": "3338dbf3-64a2-452d-b58a-4ba3f81ed175",
+      "name": "Add label to message",
+      "webhookId": "fc4215b4-3fe3-4402-aa0e-dff50d289667",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "BysOPUCLL6iUwNhf",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "addLabels",
+        "messageId": "={{ $('Gmail Trigger').item.json.id }}",
+        "labelIds": [
+          "Label_5834461319261910744"
+        ]
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1024,
+        208
+      ],
+      "id": "88017358-a505-46ea-86d1-f84886166c89",
+      "name": "Add label to message1",
+      "webhookId": "7aebc194-95b6-4c0f-a195-6266467ad54b",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "BysOPUCLL6iUwNhf",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "addLabels",
+        "messageId": "={{ $('Gmail Trigger').item.json.id }}",
+        "labelIds": [
+          "Label_3685623151814099112"
+        ]
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1024,
+        16
+      ],
+      "id": "6c17f3d8-b649-40db-b1d6-daf2e80b0419",
+      "name": "Add label to message2",
+      "webhookId": "70329388-431f-468b-9df7-d5d5469ae73a",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "BysOPUCLL6iUwNhf",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "addLabels",
+        "messageId": "={{ $('Gmail Trigger').item.json.id }}",
+        "labelIds": [
+          "Label_206346217929839578"
+        ]
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1248,
+        -176
+      ],
+      "id": "e5f671f7-b720-4b69-9216-f23e21120dc3",
+      "name": "Add label to message3",
+      "webhookId": "e246e942-394d-43e1-9ba9-cc4ad12ec7ec",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "BysOPUCLL6iUwNhf",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "draft",
+        "subject": "=Re: {{ $('Gmail Trigger').item.json.Subject }}",
+        "message": "={{ $('AI Agent').item.json.output.draft_response }}",
+        "options": {
+          "threadId": "={{ $('Gmail Trigger').item.json.threadId }}",
+          "sendTo": "={{ $('Gmail Trigger').item.json.From }}"
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1248,
+        208
+      ],
+      "id": "4f856592-966e-471e-8c68-f038836939c7",
+      "name": "Create a draft",
+      "webhookId": "287db63b-5835-46fe-bd3a-a0e6ae9d8acb",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "BysOPUCLL6iUwNhf",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "draft",
+        "subject": "=Re: {{ $('Gmail Trigger').item.json.Subject }}",
+        "message": "={{ $('AI Agent').item.json.output.draft_response }}",
+        "options": {
+          "threadId": "={{ $('Gmail Trigger').item.json.threadId }}",
+          "sendTo": "={{ $('Gmail Trigger').item.json.From }}"
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1248,
+        16
+      ],
+      "id": "d158ff76-f985-4fdc-8ca6-da6a2df8130b",
+      "name": "Create a draft1",
+      "webhookId": "4540130c-ed3e-43fe-922e-415b3c2eb605",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "BysOPUCLL6iUwNhf",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "draft",
+        "subject": "=Re: {{ $('Gmail Trigger').item.json.Subject }}",
+        "message": "={{ $('AI Agent').item.json.output.draft_response }}",
+        "options": {
+          "threadId": "={{ $('Gmail Trigger').item.json.threadId }}",
+          "sendTo": "={{ $('Gmail Trigger').item.json.From }}"
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1248,
+        400
+      ],
+      "id": "3e56a2af-d52f-484e-9f72-b124d1c56264",
+      "name": "Create a draft2",
+      "webhookId": "7a2552fd-34ce-4d18-a4f5-451d3cc17030",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "BysOPUCLL6iUwNhf",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/1b8nx7uuKwx8lfMYe372lWvAbPbm2Znx_P4f20tjhkfU/edit?usp=sharing",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1b8nx7uuKwx8lfMYe372lWvAbPbm2Znx_P4f20tjhkfU/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Email Type": "={{ $('AI Agent').item.json.output.email_type }}",
+            "Subject": "={{ $('Edit Fields').item.json.subject }}",
+            "Draft Status": "={{ $('AI Agent').item.json.output.draft_required ? 'Created' : 'Not Created' }}",
+            "Gmail Message ID": "={{ $('Gmail Trigger').item.json.id }}",
+            "Sender Name": "={{ $('Edit Fields').item.json.sender }}",
+            "Sender Email": "={{ $('Edit Fields').item.json.sender }}",
+            "Reason": "={{ $('AI Agent').item.json.output.reason }}",
+            "Gmail Label": "={{ $('AI Agent').item.json.output.email_type === 'spamm' ? 'Spam' : $('AI Agent').item.json.output.email_type === 'Personal' ? 'Personal' : $('AI Agent').item.json.output.email_type === 'Work' ? 'Work' : 'Draft' }}",
+            "Draft Created": "={{ $('AI Agent').item.json.output.draft_required ? 'Yes' : 'No' }}",
+            "Email Body": "={{ $('Edit Fields').item.json.body }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Gmail Message ID",
+              "displayName": "Gmail Message ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Sender Name",
+              "displayName": "Sender Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Sender Email",
+              "displayName": "Sender Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Subject",
+              "displayName": "Subject",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Email Type",
+              "displayName": "Email Type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Gmail Label",
+              "displayName": "Gmail Label",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Draft Created",
+              "displayName": "Draft Created",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Draft Status",
+              "displayName": "Draft Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Reason",
+              "displayName": "Reason",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Email Body",
+              "displayName": "Email Body",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1472,
+        112
+      ],
+      "id": "e06bd616-7749-45a6-997d-5a29c3b7b4f0",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "fT5TsEZhoBKFytso",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Add label to message3",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Add label to message2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Add label to message1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Add label to message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add label to message1": {
+      "main": [
+        [
+          {
+            "node": "Create a draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add label to message2": {
+      "main": [
+        [
+          {
+            "node": "Create a draft1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add label to message": {
+      "main": [
+        [
+          {
+            "node": "Create a draft2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a draft": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a draft2": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a draft1": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add label to message3": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "30f8736f-9998-419f-99d3-740eb9968427",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "e3bc5205c1e5382de8d02a717d5cff3f074e6b9f00dfd1123ceb678d0f372e57"
+  },
+  "nodeGroups": [],
+  "id": "crBTrn8RnsW9GCzY",
+  "tags": []
+}
